@@ -137,9 +137,14 @@ function setFileName(onsC: string, billOnsF: string, dueDate: string, billCode: 
 
 async function waitForFile(button: string, billCode: string) {
     let file
+    let tries = 5
 
     do {
-        await new Promise(resolve => setTimeout(resolve, 500))
+        if (tries === 0) throw new Error('Arquivo não encontrado')
+        
+        await new Promise(resolve => setTimeout(resolve, 1000))
+
+        tries--
         
         file = getFilesOnDir().find(file => {
             const [fileType, _] = getFileTypeAndExtension(button!)
