@@ -59,10 +59,16 @@ async function setupBrowser() {
     )
 
     browser = await puppeteer.launch({
-        headless: false,
+        headless: true,
         executablePath: executablePath(),
     })
     page = await browser.newPage()
+
+    const client = await page.target().createCDPSession()
+    await client.send('Page.setDownloadBehavior', {
+        behavior: 'allow',
+        downloadPath: downloadPath,
+    })
 
     page.setDefaultNavigationTimeout(50000)
     await page.setViewport({ width: 1400, height: 750 })
@@ -129,6 +135,21 @@ function setFileName(onsC: string, billOnsF: string, dueDate: string, billCode: 
     return `${onsC}_${uniqueOnsF}_${year + month + day}_${fileType}_${id}_${billCode}.${fileExtension}`
 }
 
+async function waitForFile(button: string, billCode: string) {
+    let file
+
+    do {
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        file = getFilesOnDir().find(file => {
+            const [fileType, _] = getFileTypeAndExtension(button!)
+            return file.includes(billCode) && file.includes(fileType)
+        })
+    } while (!file)
+
+    return file
+}
+
 async function downloadTableContent(table: Table, onsC: string, onsF: string[], dueDate: string, id: string) {
     const downloads: Map<string, string> = new Map()
 
@@ -138,29 +159,16 @@ async function downloadTableContent(table: Table, onsC: string, onsF: string[], 
         if (onsF.includes(parseOnsF.companiesToCode[row.content['Estabelecimento']]) && row.content['Vencimento'] === dueDate) {
             if (!found) {
                 clearAssetsFolder(onsC)
-
                 found = true
             }
 
             for (let button of row.buttons) {
                 await page.click(`[href="${button}"]`)
 
-                let file
-
-                do {
-                    file = getFilesOnDir().find(file => {
-                        const [fileType, _] = getFileTypeAndExtension(button!)
-
-                        return file.includes(row.content['Nº da Nota']) && file.includes(fileType)
-                    })
-
-                    await new Promise(resolve => setTimeout(resolve, 500))
-                } while (!file)
-
+                const file = await waitForFile(button!, row.content['Nº da Nota'])
                 const newFileName = setFileName(onsC, row.content['Estabelecimento'], dueDate, row.content['Nº da Nota'], id, button!)
 
                 downloads.set(file, newFileName)
-                console.log(`download: ${file} -> ${newFileName}`)
             }
         }
     }

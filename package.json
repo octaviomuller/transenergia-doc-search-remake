@@ -13,6 +13,7 @@
     "@types/archiver": "^5.3.1",
     "@types/puppeteer": "^7.0.4",
     "archiver": "^5.3.1",
+    "archiver-promise": "^1.0.0",
     "path": "^0.12.7",
     "puppeteer-extra": "^3.3.4",
     "puppeteer-extra-plugin-user-preferences": "^2.4.0"
